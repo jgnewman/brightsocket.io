@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Brightsocket Test Page</title>
+  </head>
+  <body>
+    Alive!
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+
+      var socket = io();
+
+      socket.emit('IDENTIFY', { type: 'USER' });
+
+      socket.on('err:UNAUTHORIZED', function (payload) {
+        console.log(payload);
+        console.log('trying again');
+        socket.emit('IDENTIFY', {
+          type: 'USER',
+          username: 'fake@fake.com',
+          password: 'password'
+        });
+      });
+
+      socket.on('ok:IDENTIFIED', function (payload) {
+        console.log('successfully identified', payload);
+        socket.emit('FAVORITE_FOOD');
+        socket.emit('FAVORITE_MOVIE');
+      });
+
+      socket.on('ok:FAVORITE_FOOD', function (payload) {
+        console.log('favorite food is', payload);
+      });
+
+      socket.on('ok:FAVORITE_MOVIE', function (payload) {
+        console.log('favorite movie is', payload);
+      });
+
+    </script>
+  </body>
+</html>

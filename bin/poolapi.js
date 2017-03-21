@@ -63,16 +63,14 @@ var PoolAPI = function () {
 
   _createClass(PoolAPI, [{
     key: 'identify',
-    value: function identify(type) {
+    value: function identify(type, callback) {
       var _this = this;
 
-      return new Promise(function (resolve, reject) {
-        _this.pool.onConnection(function (connection, pool) {
-          connection.on('IDENTIFY', function (identity) {
-            if (type === identity.type) {
-              resolve(connection, identity, _this.server);
-            }
-          });
+      this.pool.onConnection(function (connection, pool) {
+        connection.on('IDENTIFY', function (identity) {
+          if (type === identity.type) {
+            callback && callback(connection, identity, _this.server);
+          }
         });
       });
     }

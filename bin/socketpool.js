@@ -44,6 +44,10 @@ var _createClass = function () { function defineProperties(target, props) { for 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * 2. Emit actions on that connection.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    `connection.emit(action, payload)` will emit an action on this connection.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * 3. Apply middleware that will handle all incoming messages.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    `connection.filterIncoming(middleware)` will handle all
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    incoming messages before `on` gets to them.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       */
 
 exports.default = socketpool;
@@ -76,6 +80,31 @@ function _emitTo(pool, id, event, message) {
 }
 
 /**
+ * Executes each function in a list of asynchronous functions. Each one
+ * is given an argument we call `next`. The only way to get to the next
+ * function in the list is to call `next`. If you don't, the process is
+ * halted.
+ *
+ * @param  {Array}    wares    A list of possibly asynchronous functions.
+ * @param  {String}   event    The name of a socket event.
+ * @param  {Any}      payload  The body of the socket message.
+ * @param  {Function} callback A function to run after all middleware is executed.
+ *
+ * @return {undefined}
+ */
+function runAsyncMiddleware(wares, event, payload, callback) {
+  if (wares.length) {
+    var ware = wares[0];
+    var restWares = wares.slice(1);
+    ware(event, payload, function () {
+      runAsyncMiddleware(restWares, event, payload, callback);
+    });
+  } else {
+    callback && callback(payload);
+  }
+}
+
+/**
  * @class
  *
  * Models a single websocket connection in the connection pool.
@@ -99,6 +128,7 @@ var Connection = function () {
     this.socket = socket;
     this.id = socket.id;
     this.pool = pool;
+    this.incomingFilters = [];
   }
 
   /**
@@ -114,7 +144,11 @@ var Connection = function () {
   _createClass(Connection, [{
     key: 'on',
     value: function on(event, fn) {
-      return this.socket.on(event, fn);
+      var _this = this;
+
+      return this.socket.on(event, function (payload) {
+        runAsyncMiddleware(_this.incomingFilters, event, payload, fn);
+      });
     }
 
     /**
@@ -130,6 +164,19 @@ var Connection = function () {
     key: 'emit',
     value: function emit(event, message) {
       return _emitTo(this.pool, this.id, event, message);
+    }
+
+    /**
+     * Apply middleware to incoming messages.
+     *
+     * @param  {Function} middleware  A function to be executed BEFORE
+     *                                normal event listener functions.
+     */
+
+  }, {
+    key: 'filterIncoming',
+    value: function filterIncoming(middleware) {
+      return this.incomingFilters.push(middleware);
     }
   }]);
 
@@ -176,11 +223,11 @@ var ConnectionManager = function () {
   _createClass(ConnectionManager, [{
     key: 'onConnection',
     value: function onConnection(apiFn) {
-      var _this = this;
+      var _this2 = this;
 
       return this.pool.on('connection', function (socket) {
-        var connection = new Connection(socket, _this.pool);
-        apiFn(connection, _this.pool);
+        var connection = new Connection(socket, _this2.pool);
+        apiFn(connection, _this2.pool);
       });
     }
 

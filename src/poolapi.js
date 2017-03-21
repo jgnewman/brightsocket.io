@@ -43,14 +43,12 @@ class PoolAPI {
    * connection, the identity payload, and the webserver, thus allowing you to
    * hook an api up to that connection and even authenticate it if you want.
    */
-  identify(type) {
-    return new Promise((resolve, reject) => {
-      this.pool.onConnection((connection, pool) => {
-        connection.on('IDENTIFY', identity => {
-          if (type === identity.type) {
-            resolve(connection, identity, this.server);
-          }
-        });
+  identify(type, callback) {
+    this.pool.onConnection((connection, pool) => {
+      connection.on('IDENTIFY', identity => {
+        if (type === identity.type) {
+          callback && callback(connection, identity, this.server);
+        }
       });
     });
   }
