@@ -1,5 +1,7 @@
 # brightsocket.io
 
+#### Currently in beta.
+
 Brightsocket.io is an abstraction over Socket.io that makes managing socket connection pools and building websocket-based APIs easier than ever before!
 
 It works like this:
