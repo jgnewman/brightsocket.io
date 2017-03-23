@@ -1,6 +1,6 @@
 {
   "name": "brightsocket.io",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "An abstraction over socket.io for quickly building websocket APIs",
   "main": "bin/brightsocket.js",
   "repository": {
