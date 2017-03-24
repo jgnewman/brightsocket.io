@@ -48,7 +48,7 @@ api.identify('USER', (connection, identity, webserver) => {
     connection.filterIncoming((action, payload, next) => {
       jwt.verify(token, jwtSecret, (err) => {
         if (err) {
-          connection.emit('err:UNAUTHORIZED', 'Username or password did not match');
+          connection.send('err:UNAUTHORIZED', 'Username or password did not match');
         } else {
           next();
         }
@@ -56,15 +56,15 @@ api.identify('USER', (connection, identity, webserver) => {
     });
 
     // Tell the user they're authorized
-    connection.emit('ok:IDENTIFIED', userRecord);
+    connection.send('ok:IDENTIFIED', userRecord);
 
     // Define the rest of the API
-    connection.on('FAVORITE_FOOD', () => connection.emit('ok:FAVORITE_FOOD', 'spaghetti'));
-    connection.on('FAVORITE_MOVIE', () => connection.emit('ok:FAVORITE_MOVIE', 'Moana'));
+    connection.receive('FAVORITE_FOOD', () => connection.send('ok:FAVORITE_FOOD', 'spaghetti'));
+    connection.receive('FAVORITE_MOVIE', () => connection.send('ok:FAVORITE_MOVIE', 'Moana'));
 
   // If login credentials don't match, consider them unauthorized.
   } else {
-    connection.emit('err:UNAUTHORIZED', 'Username or password did not match');
+    connection.send('err:UNAUTHORIZED', 'Username or password did not match');
   }
 
 

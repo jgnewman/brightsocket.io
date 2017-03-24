@@ -63,13 +63,32 @@ var PoolAPI = function () {
 
   _createClass(PoolAPI, [{
     key: 'identify',
-    value: function identify(type, callback) {
+    value: function identify(expectedType, callback) {
       var _this = this;
 
-      this.pool.onConnection(function (connection, pool) {
-        connection.on('IDENTIFY', function (identity) {
-          if (type === identity.type) {
-            callback && callback(connection, identity, _this.server);
+      // When a new connection comes in...
+      this.pool.connect(function (connection, pool) {
+
+        // Set up a listener for the internal IDENTIFY action.
+        connection.receive('BRIGHTSOCKET_INTERNAL:IDENTIFY', function (identity) {
+
+          // Assess the usertype being identified.
+          var userType = identity['BRIGHTSOCKET_INTERNAL:USERTYPE'];
+
+          // If the usertype matches the expected identified type...
+          if (expectedType === userType) {
+
+            // Loop over the identity package and filter out all
+            // internal keys.
+            var userPackage = {};
+            Object.keys(identity).forEach(function (key) {
+              if (key.indexOf('BRIGHTSOCKET_INTERNAL:') !== 0) {
+                userPackage[key] = identity[key];
+              }
+            });
+
+            // Then run the callback
+            callback && callback(connection, userPackage, _this.server);
           }
         });
       });

@@ -43,11 +43,31 @@ class PoolAPI {
    * connection, the identity payload, and the webserver, thus allowing you to
    * hook an api up to that connection and even authenticate it if you want.
    */
-  identify(type, callback) {
-    this.pool.onConnection((connection, pool) => {
-      connection.on('IDENTIFY', identity => {
-        if (type === identity.type) {
-          callback && callback(connection, identity, this.server);
+  identify(expectedType, callback) {
+
+    // When a new connection comes in...
+    this.pool.connect((connection, pool) => {
+
+      // Set up a listener for the internal IDENTIFY action.
+      connection.receive('BRIGHTSOCKET_INTERNAL:IDENTIFY', identity => {
+
+        // Assess the usertype being identified.
+        const userType = identity['BRIGHTSOCKET_INTERNAL:USERTYPE'];
+
+        // If the usertype matches the expected identified type...
+        if (expectedType === userType) {
+
+          // Loop over the identity package and filter out all
+          // internal keys.
+          const userPackage = {};
+          Object.keys(identity).forEach(key => {
+            if (key.indexOf('BRIGHTSOCKET_INTERNAL:') !== 0) {
+              userPackage[key] = identity[key];
+            }
+          });
+
+          // Then run the callback
+          callback && callback(connection, userPackage, this.server);
         }
       });
     });

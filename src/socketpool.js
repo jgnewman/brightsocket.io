@@ -21,12 +21,12 @@
  *    connections managed by this CM instance.
  *
  * 2. Emit an action to a single socket.
- *    `<CM_INSTANCE>.emitTo(socketId, action, payload)` will emit your action
+ *    `<CM_INSTANCE>.send(socketId, action, payload)` will emit your action
  *    to the socket identified by its ID. The specified socket must exist
  *    within the pool of connections managed by this CM instance.
  *
  * 3. Manage new connections to socket.io.
- *    `<CM_INSTANCE>.onConnection(callback)` allows you to build an API for
+ *    `<CM_INSTANCE>.connect(callback)` allows you to build an API for
  *    a new connection to the socket pool. When executed, `callback` takes
  *    as its arguments the new socket connection and the full pool of sockets.
  *
@@ -56,12 +56,12 @@ import io from 'socket.io';
  *
  * @return {undefined}
  */
-function emitTo(pool, id, event, message) {
+function send(pool, id, event, message) {
   const socket = pool.sockets.connected[id];
   if (socket) {
     return socket.emit(event, message);
   } else {
-    console.log(`Cannot emit ${event} to disconnected socket ${id}`);
+    console.log(`Cannot send ${event} to disconnected socket ${id}`);
   }
 }
 
@@ -122,7 +122,7 @@ class Connection {
    *
    * @return The result of calling `socket.on`.
    */
-  on(event, fn) {
+  receive(event, fn) {
     return this.socket.on(event, (payload) => {
       runAsyncMiddleware(this.incomingFilters, event, payload, fn);
     });
@@ -136,8 +136,8 @@ class Connection {
    *
    * @return The result of calling Socket.io's `emit` method.
    */
-  emit(event, message) {
-    return emitTo(this.pool, this.id, event, message);
+  send(event, message) {
+    return send(this.pool, this.id, event, message);
   }
 
   /**
@@ -184,7 +184,7 @@ class ConnectionManager {
    *
    * @return The result of creating a Socket.io connection handler.
    */
-  onConnection(apiFn) {
+  connect(apiFn) {
     return this.pool.on('connection', socket => {
       const connection = new Connection(socket, this.pool);
       apiFn(connection, this.pool);
@@ -200,8 +200,8 @@ class ConnectionManager {
    *
    * @return The result of calling Socket.io's `emit` method.
    */
-  emitTo(id, event, message) {
-    return emitTo(this.pool, id, event, message);
+  send(id, event, message) {
+    return send(this.pool, id, event, message);
   }
 
   /**

@@ -27,12 +27,12 @@ var _createClass = function () { function defineProperties(target, props) { for 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    connections managed by this CM instance.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * 2. Emit an action to a single socket.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    `<CM_INSTANCE>.emitTo(socketId, action, payload)` will emit your action
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    `<CM_INSTANCE>.send(socketId, action, payload)` will emit your action
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    to the socket identified by its ID. The specified socket must exist
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    within the pool of connections managed by this CM instance.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * 3. Manage new connections to socket.io.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    `<CM_INSTANCE>.onConnection(callback)` allows you to build an API for
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    `<CM_INSTANCE>.connect(callback)` allows you to build an API for
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    a new connection to the socket pool. When executed, `callback` takes
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    as its arguments the new socket connection and the full pool of sockets.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *
@@ -70,12 +70,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  *
  * @return {undefined}
  */
-function _emitTo(pool, id, event, message) {
+function _send(pool, id, event, message) {
   var socket = pool.sockets.connected[id];
   if (socket) {
     return socket.emit(event, message);
   } else {
-    console.log('Cannot emit ' + event + ' to disconnected socket ' + id);
+    console.log('Cannot send ' + event + ' to disconnected socket ' + id);
   }
 }
 
@@ -142,8 +142,8 @@ var Connection = function () {
 
 
   _createClass(Connection, [{
-    key: 'on',
-    value: function on(event, fn) {
+    key: 'receive',
+    value: function receive(event, fn) {
       var _this = this;
 
       return this.socket.on(event, function (payload) {
@@ -161,9 +161,9 @@ var Connection = function () {
      */
 
   }, {
-    key: 'emit',
-    value: function emit(event, message) {
-      return _emitTo(this.pool, this.id, event, message);
+    key: 'send',
+    value: function send(event, message) {
+      return _send(this.pool, this.id, event, message);
     }
 
     /**
@@ -221,8 +221,8 @@ var ConnectionManager = function () {
 
 
   _createClass(ConnectionManager, [{
-    key: 'onConnection',
-    value: function onConnection(apiFn) {
+    key: 'connect',
+    value: function connect(apiFn) {
       var _this2 = this;
 
       return this.pool.on('connection', function (socket) {
@@ -242,9 +242,9 @@ var ConnectionManager = function () {
      */
 
   }, {
-    key: 'emitTo',
-    value: function emitTo(id, event, message) {
-      return _emitTo(this.pool, id, event, message);
+    key: 'send',
+    value: function send(id, event, message) {
+      return _send(this.pool, id, event, message);
     }
 
     /**
