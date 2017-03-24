@@ -70,10 +70,10 @@ var PoolAPI = function () {
       this.pool.connect(function (connection, pool) {
 
         // Set up a listener for the internal IDENTIFY action.
-        connection.receive('BRIGHTSOCKET_INTERNAL:IDENTIFY', function (identity) {
+        connection.receive('BRIGHTSOCKET:IDENTIFY', function (identity) {
 
           // Assess the usertype being identified.
-          var userType = identity['BRIGHTSOCKET_INTERNAL:USERTYPE'];
+          var userType = identity['BRIGHTSOCKET:USERTYPE'];
 
           // If the usertype matches the expected identified type...
           if (expectedType === userType) {
@@ -82,7 +82,7 @@ var PoolAPI = function () {
             // internal keys.
             var userPackage = {};
             Object.keys(identity).forEach(function (key) {
-              if (key.indexOf('BRIGHTSOCKET_INTERNAL:') !== 0) {
+              if (key.indexOf('BRIGHTSOCKET:') !== 0) {
                 userPackage[key] = identity[key];
               }
             });

@@ -45,7 +45,7 @@ api.identify('USER', (connection, identity, webserver) => {
     // Apply middleware to incoming messages. For anything that comes in
     // on this connection, verify the token. If it's invalid, consider the
     // user unauthorized. If it's valid, allow the connection to go through.
-    connection.filterIncoming((action, payload, next) => {
+    connection.addFilter((action, payload, next) => {
       jwt.verify(token, jwtSecret, (err) => {
         if (err) {
           connection.send('err:UNAUTHORIZED', 'Username or password did not match');

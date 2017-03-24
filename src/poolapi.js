@@ -49,10 +49,10 @@ class PoolAPI {
     this.pool.connect((connection, pool) => {
 
       // Set up a listener for the internal IDENTIFY action.
-      connection.receive('BRIGHTSOCKET_INTERNAL:IDENTIFY', identity => {
+      connection.receive('BRIGHTSOCKET:IDENTIFY', identity => {
 
         // Assess the usertype being identified.
-        const userType = identity['BRIGHTSOCKET_INTERNAL:USERTYPE'];
+        const userType = identity['BRIGHTSOCKET:USERTYPE'];
 
         // If the usertype matches the expected identified type...
         if (expectedType === userType) {
@@ -61,7 +61,7 @@ class PoolAPI {
           // internal keys.
           const userPackage = {};
           Object.keys(identity).forEach(key => {
-            if (key.indexOf('BRIGHTSOCKET_INTERNAL:') !== 0) {
+            if (key.indexOf('BRIGHTSOCKET:') !== 0) {
               userPackage[key] = identity[key];
             }
           });

@@ -40,7 +40,7 @@
  *    `connection.emit(action, payload)` will emit an action on this connection.
  *
  * 3. Apply middleware that will handle all incoming messages.
- *    `connection.filterIncoming(middleware)` will handle all
+ *    `connection.addFilter(middleware)` will handle all
  *    incoming messages before `on` gets to them.
  */
 
@@ -146,7 +146,7 @@ class Connection {
    * @param  {Function} middleware  A function to be executed BEFORE
    *                                normal event listener functions.
    */
-  filterIncoming(middleware) {
+  addFilter(middleware) {
     return this.incomingFilters.push(middleware);
   }
 

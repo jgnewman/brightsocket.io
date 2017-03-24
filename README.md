@@ -160,7 +160,7 @@ api.identify('USER', (connection, identity, webserver) => {
     // Now we're going to apply middleware to all incoming messages.
     // For anything that comes in on this connection, we'll attempt to
     // verify the token.
-    connection.filterIncoming((action, payload, next) => {
+    connection.addFilter((action, payload, next) => {
       jwt.verify(token, jwtSecret, (err) => {
 
         // If there's no error, the token is valid and we'll call
@@ -235,6 +235,21 @@ socket.receive('IDENTIFIED', usr => {
 // other requests too.
 socket.receive('GOT_FAVORITE_FOOD', food => console.log(food));
 socket.receive('GOT_FAVORITE_MOVIE', movie => console.log(movie));
+```
+
+## Can I use the server library without the client library?
+
+If you must. Here's what you'd need to do to get around the client library:
+
+```javascript
+// using socket.io
+var socket = io();
+socket.emit("BRIGHTSOCKET:IDENTIFY", {
+  "BRIGHTSOCKET:USERTYPE": "USER",
+  // any other values to send go in this object
+});
+// From here, just use socket.on and socket.emit
+// instead of receive and send.
 ```
 
 And that's all there is to it. Super easy.
