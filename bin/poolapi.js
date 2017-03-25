@@ -40,6 +40,59 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+/**
+ * Runs a series of callbacks for a new connection.
+ *
+ * @param  {Object} settings - All the values we'll need to run the callbacks.
+ *
+ * @return {undefined}
+ */
+function runExtensions(settings) {
+  var extensions = settings.extensions,
+      connectionTypes = settings.connectionTypes,
+      connection = settings.connection,
+      userPackage = settings.userPackage,
+      server = settings.server;
+
+  // For every extension the user listed...
+
+  extensions.forEach(function (extension) {
+
+    // Find the callbacks associated with that extension.
+    var callbacks = connectionTypes[extension];
+
+    // If there aren't any, we're trying to extend something that hasn't
+    // been defined yet.
+    if (!callbacks) {
+      throw new Error('Can not extend type ' + extension + ' because it does not exist.');
+
+      // Otherwise, we can call each one.
+    } else {
+      callbacks.forEach(function (callback) {
+        return callback(connection, userPackage, server);
+      });
+    }
+  });
+}
+
+/**
+ * Takes an incoming identity package and strips out keys
+ * that were inserted by Brightsocket.
+ *
+ * @param  {Object} identity  - Came in from the IDENTIFY action.
+ *
+ * @return {Object} The clean object.
+ */
+function cleanIdentity(identity) {
+  var userPackage = {};
+  Object.keys(identity).forEach(function (key) {
+    if (key.indexOf('BRIGHTSOCKET:') !== 0) {
+      userPackage[key] = identity[key];
+    }
+  });
+  return userPackage;
+}
+
 var PoolAPI = function () {
 
   /**
@@ -50,6 +103,7 @@ var PoolAPI = function () {
 
     this.pool = (0, _socketpool2.default)(server);
     this.server = server;
+    this.connectionTypes = {};
   }
 
   /**
@@ -63,8 +117,21 @@ var PoolAPI = function () {
 
   _createClass(PoolAPI, [{
     key: 'identify',
-    value: function identify(expectedType, callback) {
+    value: function identify(expectedType, extensions, callback) {
       var _this = this;
+
+      // Determine whether we have extension types.
+      if (!callback) {
+        callback = extensions;
+        extensions = null;
+      }
+
+      // Make sure our connectionTypes object registry exists then
+      // register the callback for that connection type.
+      if (callback) {
+        this.connectionTypes[expectedType] = this.connectionTypes[expectedType] || [];
+        this.connectionTypes[expectedType].push(callback);
+      }
 
       // When a new connection comes in...
       this.pool.connect(function (connection, pool) {
@@ -80,12 +147,18 @@ var PoolAPI = function () {
 
             // Loop over the identity package and filter out all
             // internal keys.
-            var userPackage = {};
-            Object.keys(identity).forEach(function (key) {
-              if (key.indexOf('BRIGHTSOCKET:') !== 0) {
-                userPackage[key] = identity[key];
-              }
-            });
+            var userPackage = cleanIdentity(identity);
+
+            // Run all extension callbacks if they exist
+            if (extensions) {
+              runExtensions({
+                extensions: extensions,
+                connectionTypes: _this.connectionTypes,
+                connection: connection,
+                userPackage: userPackage,
+                server: _this.server
+              });
+            }
 
             // Then run the callback
             callback && callback(connection, userPackage, _this.server);

@@ -26,6 +26,53 @@
 
 import socketpool from './socketpool';
 
+/**
+ * Runs a series of callbacks for a new connection.
+ *
+ * @param  {Object} settings - All the values we'll need to run the callbacks.
+ *
+ * @return {undefined}
+ */
+function runExtensions(settings) {
+  const { extensions, connectionTypes, connection, userPackage, server } = settings;
+
+  // For every extension the user listed...
+  extensions.forEach(extension => {
+
+    // Find the callbacks associated with that extension.
+    const callbacks = connectionTypes[extension];
+
+    // If there aren't any, we're trying to extend something that hasn't
+    // been defined yet.
+    if (!callbacks) {
+      throw new Error(`Can not extend type ${extension} because it does not exist.`);
+
+    // Otherwise, we can call each one.
+    } else {
+      callbacks.forEach(callback => callback(connection, userPackage, server));
+    }
+  });
+}
+
+/**
+ * Takes an incoming identity package and strips out keys
+ * that were inserted by Brightsocket.
+ *
+ * @param  {Object} identity  - Came in from the IDENTIFY action.
+ *
+ * @return {Object} The clean object.
+ */
+function cleanIdentity(identity) {
+  const userPackage = {};
+  Object.keys(identity).forEach(key => {
+    if (key.indexOf('BRIGHTSOCKET:') !== 0) {
+      userPackage[key] = identity[key];
+    }
+  });
+  return userPackage;
+}
+
+
 class PoolAPI {
 
   /**
@@ -34,6 +81,7 @@ class PoolAPI {
   constructor(server) {
     this.pool = socketpool(server);
     this.server = server;
+    this.connectionTypes = {};
   }
 
   /**
@@ -43,7 +91,20 @@ class PoolAPI {
    * connection, the identity payload, and the webserver, thus allowing you to
    * hook an api up to that connection and even authenticate it if you want.
    */
-  identify(expectedType, callback) {
+  identify(expectedType, extensions, callback) {
+
+    // Determine whether we have extension types.
+    if (!callback) {
+      callback = extensions;
+      extensions = null;
+    }
+
+    // Make sure our connectionTypes object registry exists then
+    // register the callback for that connection type.
+    if (callback) {
+      this.connectionTypes[expectedType] = this.connectionTypes[expectedType] || [];
+      this.connectionTypes[expectedType].push(callback);
+    }
 
     // When a new connection comes in...
     this.pool.connect((connection, pool) => {
@@ -59,12 +120,18 @@ class PoolAPI {
 
           // Loop over the identity package and filter out all
           // internal keys.
-          const userPackage = {};
-          Object.keys(identity).forEach(key => {
-            if (key.indexOf('BRIGHTSOCKET:') !== 0) {
-              userPackage[key] = identity[key];
-            }
-          });
+          const userPackage = cleanIdentity(identity);
+
+          // Run all extension callbacks if they exist
+          if (extensions) {
+            runExtensions({
+              extensions: extensions,
+              connectionTypes: this.connectionTypes,
+              connection: connection,
+              userPackage: userPackage,
+              server: this.server
+            });
+          }
 
           // Then run the callback
           callback && callback(connection, userPackage, this.server);

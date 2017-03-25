@@ -252,4 +252,32 @@ socket.emit("BRIGHTSOCKET:IDENTIFY", {
 // instead of receive and send.
 ```
 
+## Can I combine pre-identified user types?
+
+You sure can. Here's an example:
+
+```javascript
+const api = brightsocket(server);
+
+api.identify('ALL_USERS', connection => {
+  connection.receive('MESSAGE', () => {
+    console.log('This should be logged for all users');
+  });
+});
+
+api.identify('BASIC_USER', ['ALL_USERS'], connection => {
+  connection.receive('MESSAGE', () => {
+    console.log('This only gets logged for basic users');
+  });
+});
+
+api.identify('ADMIN_USER', ['ALL_USERS'], connection => {
+  connection.receive('MESSAGE', () => {
+    console.log('This only gets logged for admins');
+  });
+});
+```
+
+In the above example, basic users and admin users each have their own console log that occurs whenever a `MESSAGE` comes through. However, because each of these types "extends" the `ALL_USERS` type, the `ALL_USERS` console log will occur whenever a `MESSAGE` comes through for either of the other types as well.
+
 And that's all there is to it. Super easy.

@@ -27,8 +27,23 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, './index.html'));
 });
 
+app.get('/app.js', (req, res) => {
+  res.sendFile(path.resolve(__dirname, './app.js'));
+});
+
+api.identify('EVERYONE', connection => {
+  let logged = false;
+  connection.addFilter((action, payload, next) => {
+    if (!logged) {
+      console.log('Extensions are working.');
+      logged = true;
+    }
+    next();
+  });
+});
+
 // Listen for a new socket connection to identify as a USER type.
-api.identify('USER', (connection, identity, webserver) => {
+api.identify('USER', ['EVERYONE'], (connection, identity, webserver) => {
   let token;
 
   // When we get a new user connection, check to make sure their
