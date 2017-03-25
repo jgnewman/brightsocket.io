@@ -1,6 +1,6 @@
 {
   "name": "brightsocket.io",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "An abstraction over socket.io for quickly building websocket APIs",
   "main": "bin/brightsocket.js",
   "repository": {
@@ -32,6 +32,6 @@
     "vinyl-source-stream": "^1.1.0"
   },
   "dependencies": {
-    "brightsocket.io-client": "^0.0.2"
+    "brightsocket.io-client": "^0.0.3"
   }
 }
