@@ -31,7 +31,7 @@ app.get('/app.js', (req, res) => {
   res.sendFile(path.resolve(__dirname, './app.js'));
 });
 
-api.identify('EVERYONE', connection => {
+api.connect('EVERYONE', connection => {
   let logged = false;
   connection.addFilter((action, payload, next) => {
     if (!logged) {
@@ -43,7 +43,7 @@ api.identify('EVERYONE', connection => {
 });
 
 // Listen for a new socket connection to identify as a USER type.
-api.identify('USER', ['EVERYONE'], (connection, identity, webserver) => {
+api.connect('USER', ['EVERYONE'], (connection, identity, webserver) => {
   let token;
 
   // When we get a new user connection, check to make sure their

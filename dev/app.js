@@ -9,29 +9,27 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var socket = (0, _brightsocket2.default)();
 
-socket.identify('USER');
+socket.connect('USER');
 
 socket.receive('err:UNAUTHORIZED', function (payload) {
   console.log(payload);
   console.log('trying again');
-  socket.identify('USER', {
-    username: 'fake@fake.com',
-    password: 'password'
+  socket.connect('USER', { username: 'fake@fake.com', password: 'password' }, function () {
+
+    socket.receive('ok:IDENTIFIED', function (payload) {
+      console.log('successfully identified', payload);
+      socket.send('FAVORITE_FOOD');
+      socket.send('FAVORITE_MOVIE');
+    });
+
+    socket.receive('ok:FAVORITE_FOOD', function (payload) {
+      console.log('favorite food is', payload);
+    });
+
+    socket.receive('ok:FAVORITE_MOVIE', function (payload) {
+      console.log('favorite movie is', payload);
+    });
   });
-});
-
-socket.receive('ok:IDENTIFIED', function (payload) {
-  console.log('successfully identified', payload);
-  socket.send('FAVORITE_FOOD');
-  socket.send('FAVORITE_MOVIE');
-});
-
-socket.receive('ok:FAVORITE_FOOD', function (payload) {
-  console.log('favorite food is', payload);
-});
-
-socket.receive('ok:FAVORITE_MOVIE', function (payload) {
-  console.log('favorite movie is', payload);
 });
 
 },{"brightsocket.io-client":7}],2:[function(require,module,exports){
@@ -386,7 +384,10 @@ var BrightsocketClient = function () {
   function BrightsocketClient(location) {
     _classCallCheck(this, BrightsocketClient);
 
-    this.socket = location ? (0, _socket2.default)(location) : (0, _socket2.default)();
+    this.location = location;
+    this.socket = this.location ? (0, _socket2.default)(this.location) : (0, _socket2.default)();
+    this.hasSentIdentify = false;
+    this.actions = [];
   }
 
   /**
@@ -394,17 +395,44 @@ var BrightsocketClient = function () {
    *
    * @param {String}       userType        - An arbitrary name for this user type.
    * @param {Serializable} optionalPayload - Any extra data to send in the identity package.
+   * @param {Function}     callback        - Runs after we've been identified.
    *
    * @return {undefined}
    */
 
 
   _createClass(BrightsocketClient, [{
-    key: 'identify',
-    value: function identify(userType, optionalPayload) {
-      var proxyPayload = optionalPayload ? Object.assign({}, optionalPayload) : {};
-      proxyPayload["BRIGHTSOCKET:USERTYPE"] = userType;
-      this.socket.emit('BRIGHTSOCKET:IDENTIFY', proxyPayload);
+    key: 'connect',
+    value: function connect(userType, optionalPayload, callback) {
+      var _this = this;
+
+      // Allow the middle argument to be optional.
+      if (typeof optionalPayload === 'function') {
+        callback = optionalPayload;
+        optionalPayload = undefined;
+      }
+
+      // If we haven't yet tried to identify, send the identify action then
+      // mark that we've identified.
+      if (!this.hasSentIdentify) {
+        var proxyPayload = optionalPayload ? Object.assign({}, optionalPayload) : {};
+        proxyPayload["BRIGHTSOCKET:CHANNEL"] = userType;
+        this.socket.emit('BRIGHTSOCKET:IDENTIFY', proxyPayload);
+        callback && this.socket.on('BRIGHTSOCKET:IDENTIFIED', callback);
+        this.hasSentIdentify = true;
+
+        // If we've already identified or tried to identify once, mark that
+        // back to false, disconnect, reconnect, then recursively call identify
+        // again, thus allowing us to hit the first condition.
+      } else {
+        this.hasSentIdentify = false;
+        this.socket.disconnect();
+        this.socket = this.location ? (0, _socket2.default)(this.location) : (0, _socket2.default)();
+        this.actions.forEach(function (actionTuple) {
+          _this.socket.on(actionTuple[0], actionTuple[1]);
+        });
+        this.connect.apply(this, arguments);
+      }
     }
 
     /**
@@ -417,6 +445,7 @@ var BrightsocketClient = function () {
   }, {
     key: 'receive',
     value: function receive(action, callback) {
+      this.actions.push([action, callback]);
       return this.socket.on(action, callback);
     }
 
@@ -431,6 +460,17 @@ var BrightsocketClient = function () {
     key: 'send',
     value: function send(action, optionalPayload) {
       return optionalPayload ? this.socket.emit(action, optionalPayload) : this.socket.emit(action);
+    }
+
+    /**
+     * Manually disconnects the websocket, requiring re-identify.
+     */
+
+  }, {
+    key: 'disconnect',
+    value: function disconnect() {
+      this.hasSentIdentify = false;
+      this.socket.disconnect();
     }
   }]);
 

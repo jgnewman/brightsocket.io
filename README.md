@@ -31,34 +31,34 @@ The server object you pass in here is the same one you would pass to Socket.io i
 const api = brightsocket(server);
 ```
 
-### 3. Demand that your users identify themselves.
+### 3. Create a connection channel.
 
-Brightsocket is built on the idea that identification is good. With that in mind, the first thing our client side code needs to do once it connects is identify what type of user it wants to be. This allows you to divide your API into partitions based on user type, and even require authentication right away.
+The first thing our client side code is going to do when it connects is tell us which connection channel it wants to use. Connection channels are just arbitrarily named chunks of your API. Using channels allows you to do things like divide your API into partitions based on user type, and even require authentication right away.
 
 ```javascript
-api.identify('BASIC_USER', (connection, identity, webserver) => {
+api.connect('BASIC_CHANNEL', (connection, identity, webserver) => {
   connection.send('IDENTIFIED', 'Congratulations, you identified yourself!');
 
   // Your socket API will be defined here //
 });
 ```
 
-This tiny snippet of code does many things. First, it sets up a connection listener. Whenever a new connection is detected, it will set up a subsequent listener for an incoming connection to identify itself. No other socket events will be acknowledged until the client side sends us this event. Using the Brightsocket client-side library, that would look like this:
+This tiny snippet of code does many things. First, it sets up a connection listener. Whenever a new connection is detected, it will set up a subsequent listener for an incoming connection to identify which channel it would like to use. No other socket events will be acknowledged until the client side sends us this event. Using the Brightsocket client-side library, that would look like this:
 
 ```javascript
 // Client Side (using brightsocket.io-client library)
 const socket = brightsocket();
-socket.identify('BASIC_USER', <OPTIONAL_PAYLOAD>);
+socket.connect('BASIC_CHANNEL', <OPTIONAL_PAYLOAD>);
 ```
 
-On the server side, any connections that correctly identify themselves will get filtered into the `identify` callback. That callback takes the connection itself, the payload that came through with the `IDENTIFY` action, and your raw webserver, in case you need it.
+On the server side, any connections that correctly identify a channel will get filtered into the `connect` callback. That callback takes the connection itself, the payload that came through with the channel-identification action, and your raw webserver, in case you need it.
 
 ### 4. Define the rest of your API.
 
 ```javascript
 // We already wrote this line in step 3. You don't need to write it again.
-api.identify('BASIC_USER', (connection, identity, webserver) => {
-  connection.send('IDENTIFIED', 'Congratulations, you identified yourself!');
+api.connect('BASIC_CHANNEL', (connection, identity, webserver) => {
+  connection.send('IDENTIFIED', 'Congratulations, you identified a channel!');
 
   connection.receive('GET_USER', payload => {
     database.getUser(payload.id).then(user => connection.send('GOT_USER', user));
@@ -124,8 +124,8 @@ app.get('/', (req, res) => {
 });
 
 // Listen for new socket connections that identify
-// themselves as `USER` type connections.
-api.identify('USER', (connection, identity, webserver) => {
+// themselves as `MY_CHANNEL` connections.
+api.connect('MY_CHANNEL', (connection, identity, webserver) => {
 
   // Check this out. We're going to store our web token
   // here and never even hand it back to the browser.
@@ -207,8 +207,8 @@ And here's the corresponding client side code:
 const socket = brightsocket();
 
 // And, based on our server side code, the first thing we
-// need to do is Identify ourself.
-socket.identify('USER', {
+// need to do is Identify a channel.
+socket.connect('MY_CHANNEL', {
   username: 'fake@fake.com',
   password: 'password'
 });
@@ -245,39 +245,39 @@ If you must. Here's what you'd need to do to get around the client library:
 // using socket.io
 var socket = io();
 socket.emit("BRIGHTSOCKET:IDENTIFY", {
-  "BRIGHTSOCKET:USERTYPE": "USER",
+  "BRIGHTSOCKET:CHANNEL": "MY_CHANNEL",
   // any other values to send go in this object
 });
 // From here, just use socket.on and socket.emit
 // instead of receive and send.
 ```
 
-## Can I combine pre-identified user types?
+## Can I combine pre-identified user channels?
 
 You sure can. Here's an example:
 
 ```javascript
 const api = brightsocket(server);
 
-api.identify('ALL_USERS', connection => {
+api.connect('ALL_USERS', connection => {
   connection.receive('MESSAGE', () => {
     console.log('This should be logged for all users');
   });
 });
 
-api.identify('BASIC_USER', ['ALL_USERS'], connection => {
+api.connect('BASIC_USER', ['ALL_USERS'], connection => {
   connection.receive('MESSAGE', () => {
     console.log('This only gets logged for basic users');
   });
 });
 
-api.identify('ADMIN_USER', ['ALL_USERS'], connection => {
+api.connect('ADMIN_USER', ['ALL_USERS'], connection => {
   connection.receive('MESSAGE', () => {
     console.log('This only gets logged for admins');
   });
 });
 ```
 
-In the above example, basic users and admin users each have their own console log that occurs whenever a `MESSAGE` comes through. However, because each of these types "extends" the `ALL_USERS` type, the `ALL_USERS` console log will occur whenever a `MESSAGE` comes through for either of the other types as well.
+In the above example, basic user and admin user channels each have their own console log that occurs whenever a `MESSAGE` comes through. However, because each of these channels "extends" the `ALL_USERS` channel, the `ALL_USERS` console log will occur whenever a `MESSAGE` comes through for either of the other channels as well.
 
 And that's all there is to it. Super easy.

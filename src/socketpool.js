@@ -26,7 +26,7 @@
  *    within the pool of connections managed by this CM instance.
  *
  * 3. Manage new connections to socket.io.
- *    `<CM_INSTANCE>.connect(callback)` allows you to build an API for
+ *    `<CM_INSTANCE>.onconnect(callback)` allows you to build an API for
  *    a new connection to the socket pool. When executed, `callback` takes
  *    as its arguments the new socket connection and the full pool of sockets.
  *
@@ -184,7 +184,7 @@ class ConnectionManager {
    *
    * @return The result of creating a Socket.io connection handler.
    */
-  connect(apiFn) {
+  onconnect(apiFn) {
     return this.pool.on('connection', socket => {
       const connection = new Connection(socket, this.pool);
       apiFn(connection, this.pool);

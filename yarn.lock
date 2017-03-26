@@ -699,8 +699,8 @@ braces@^1.8.2:
     repeat-element "^1.1.2"
 
 brightsocket.io-client:
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/brightsocket.io-client/-/brightsocket.io-client-0.0.4.tgz#c0f005233d15b7391178c224f6db91ecc287dc9c"
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/brightsocket.io-client/-/brightsocket.io-client-0.0.5.tgz#29f8e966a1cd03b5b83174810f94ff2560df8a39"
 
 brorand@^1.0.1:
   version "1.1.0"

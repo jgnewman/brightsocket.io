@@ -16,18 +16,12 @@ var _createClass = function () { function defineProperties(target, props) { for 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * 1. Import and call the `poolapi` function.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    `const api = poolapi(socketio_compatible_server)`
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * 2. Define APIs for different connection types
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * 2. Define APIs for different connection channels
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    ```
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    api.identify('MY_TYPE', (connection, identity, webserver) => {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *    api.identify('MY_CHANNEL', (connection, identity, webserver) => {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *      connection.on('SOME_ACTION', payload => ... )
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    })
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *    ```
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Taking front-end into consideration, a front-end user will need to connect
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * to socket.io then send the 'IDENTIFY' action where the payload is an object
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * with a `type` key. The value for this key should match the first argument
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * passed to `api.identify`. This will allow the identify callback to be
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * executed for this connection.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       */
 
 exports.default = poolapi;
@@ -49,7 +43,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  */
 function runExtensions(settings) {
   var extensions = settings.extensions,
-      connectionTypes = settings.connectionTypes,
+      channels = settings.channels,
       connection = settings.connection,
       userPackage = settings.userPackage,
       server = settings.server;
@@ -59,12 +53,12 @@ function runExtensions(settings) {
   extensions.forEach(function (extension) {
 
     // Find the callbacks associated with that extension.
-    var callbacks = connectionTypes[extension];
+    var callbacks = channels[extension];
 
     // If there aren't any, we're trying to extend something that hasn't
     // been defined yet.
     if (!callbacks) {
-      throw new Error('Can not extend type ' + extension + ' because it does not exist.');
+      throw new Error('Can not extend channel ' + extension + ' because it does not exist.');
 
       // Otherwise, we can call each one.
     } else {
@@ -103,7 +97,7 @@ var PoolAPI = function () {
 
     this.pool = (0, _socketpool2.default)(server);
     this.server = server;
-    this.connectionTypes = {};
+    this.channels = {};
   }
 
   /**
@@ -116,34 +110,39 @@ var PoolAPI = function () {
 
 
   _createClass(PoolAPI, [{
-    key: 'identify',
-    value: function identify(expectedType, extensions, callback) {
+    key: 'connect',
+    value: function connect(channel, extensions, callback) {
       var _this = this;
 
-      // Determine whether we have extension types.
+      // Determine whether we have extension channels.
       if (!callback) {
         callback = extensions;
         extensions = null;
       }
 
-      // Make sure our connectionTypes object registry exists then
-      // register the callback for that connection type.
+      // Make sure our channels object registry exists then
+      // register the callback for that connection channel.
       if (callback) {
-        this.connectionTypes[expectedType] = this.connectionTypes[expectedType] || [];
-        this.connectionTypes[expectedType].push(callback);
+        this.channels[channel] = this.channels[channel] || [];
+        this.channels[channel].push(callback);
       }
 
       // When a new connection comes in...
-      this.pool.connect(function (connection, pool) {
+      this.pool.onconnect(function (connection, pool) {
 
         // Set up a listener for the internal IDENTIFY action.
         connection.receive('BRIGHTSOCKET:IDENTIFY', function (identity) {
 
-          // Assess the usertype being identified.
-          var userType = identity['BRIGHTSOCKET:USERTYPE'];
+          // Assess the userChannel being identified.
+          var userChannel = identity['BRIGHTSOCKET:CHANNEL'];
 
-          // If the usertype matches the expected identified type...
-          if (expectedType === userType) {
+          // If the user channel matches the expected identified channel...
+          if (channel === userChannel) {
+
+            // Finish the identification handshake with the client.
+            // Have to do this before setting up the API functions for
+            // race condtion purposes.
+            connection.send('BRIGHTSOCKET:IDENTIFIED');
 
             // Loop over the identity package and filter out all
             // internal keys.
@@ -153,7 +152,7 @@ var PoolAPI = function () {
             if (extensions) {
               runExtensions({
                 extensions: extensions,
-                connectionTypes: _this.connectionTypes,
+                channels: _this.channels,
                 connection: connection,
                 userPackage: userPackage,
                 server: _this.server
