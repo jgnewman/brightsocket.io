@@ -132,8 +132,8 @@ api.connect('MY_CHANNEL', (connection, identity, webserver) => {
   let token;
 
   // So let's say a new USER connection comes in. We
-  // expect the payload to have a `type` key as well
-  // as a `username` and `password` key in this case.
+  // expect the payload to have
+  // a `username` and `password` key.
   // First lets handle what we do when we don't get a
   // match.
   if (identity.username !== expectedCred.username ||
@@ -179,7 +179,7 @@ api.connect('MY_CHANNEL', (connection, identity, webserver) => {
     });
 
     // Now it's time to tell the user they were successfully identified.
-    connection.send('IDENTIFIED', userRecord);
+    connection.send('AUTHENTICATED', userRecord);
 
     // And lastly, we can define the rest of our API. Each of these
     // event listeners will only be triggered if the incoming message
@@ -207,7 +207,7 @@ And here's the corresponding client side code:
 const socket = brightsocket();
 
 // And, based on our server side code, the first thing we
-// need to do is Identify a channel.
+// need to do is identify a channel.
 socket.connect('MY_CHANNEL', {
   username: 'fake@fake.com',
   password: 'password'
@@ -222,7 +222,7 @@ socket.receive('UNAUTHORIZED', msg => {
 
 // Now let's set up a handler for when the server
 // lets us know that we've successfully authenticated.
-socket.receive('IDENTIFIED', usr => {
+socket.receive('AUTHENTICATED', usr => {
   console.log('The user record:', usr);
 
   // Since we know we're authenticated now, this is a
@@ -249,7 +249,8 @@ socket.emit("BRIGHTSOCKET:IDENTIFY", {
   // any other values to send go in this object
 });
 // From here, just use socket.on and socket.emit
-// instead of receive and send.
+// instead of receive and send but it might get
+// a little clunky.
 ```
 
 ## Can I combine pre-identified user channels?
